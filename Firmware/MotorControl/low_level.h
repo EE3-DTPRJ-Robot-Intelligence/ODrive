@@ -9,6 +9,7 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include <cmsis_os.h>
 #include "drv8301.h"
+#include "as5047p.h"
 
 //default timeout waiting for phase measurement signals
 #define PH_CURRENT_MEAS_TIMEOUT 2 // [ms]
@@ -117,6 +118,7 @@ typedef struct {
     bool use_index;
     bool index_found;
     bool manually_calibrated;
+    bool use_absolute;
     float idx_search_speed;
     int32_t encoder_cpr;
     int32_t encoder_offset;
@@ -192,6 +194,7 @@ typedef struct {
         float current_setpoint;
     } set_current_setpoint_args;
     Anticogging_t anticogging;
+    AS5047P_Obj AS5047PEncoder;
     DRV8301_FaultType_e drv_fault;
 } Motor_t;
 
@@ -264,6 +267,8 @@ bool scan_for_enc_idx(Motor_t* motor, float v_d, float v_q);
 bool anti_cogging_calibration(Motor_t* motor);
 // Test functions
 void scan_motor_loop(Motor_t* motor, float omega, float voltage_magnitude);
+bool update_init_cnt_value(Motor_t* argument);
+void test_encoder();
 // Main motor control
 bool do_checks(Motor_t* motor);
 bool loop_updates(Motor_t* motor);
@@ -280,6 +285,8 @@ void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
 bool FOC_voltage(Motor_t* motor, float v_d, float v_q);
 bool FOC_current(Motor_t* motor, float Id_des, float Iq_des);
 void control_motor_loop(Motor_t* motor);
+
+void AS5047P_thread(void const * argument);
 
 //motor thread moved to axis object
 //void motor_thread(void const * argument);

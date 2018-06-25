@@ -70,7 +70,7 @@ osSemaphoreId sem_usb_irq;
 osThreadId thread_motor_0;
 osThreadId thread_motor_1;
 osThreadId thread_cmd_parse;
-
+osThreadId thread_as5047p_0;
 // Place FreeRTOS heap in core coupled memory for better performance
 __attribute__((section(".ccmram")))
 uint8_t ucHeap[configTOTAL_HEAP_SIZE];
@@ -160,6 +160,16 @@ void StartDefaultTask(void const * argument)
   osThreadDef(task_motor_1, axis_thread_entry,   osPriorityHigh,   0, 512);
   thread_motor_0 = osThreadCreate(osThread(task_motor_0), &motors[0]);
   thread_motor_1 = osThreadCreate(osThread(task_motor_1), &motors[1]);
+
+  osDelay(200);
+
+  update_init_cnt_value(&motors[0]);
+  update_init_cnt_value(&motors[0]); // repeated on purpose
+
+  update_init_cnt_value(&motors[1]);
+  update_init_cnt_value(&motors[1]); // repeated on purpose
+
+  osDelay(100);
 
   // Start command handling thread
   osThreadDef(task_cmd_parse, communication_task, osPriorityNormal, 0, 512);

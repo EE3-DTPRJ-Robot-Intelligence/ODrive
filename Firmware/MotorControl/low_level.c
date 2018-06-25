@@ -37,6 +37,9 @@ float vbus_voltage = 12.0f;
 #define POLE_PAIRS 7 // default
 //#define POLE_PAIRS 11 // for red motors
 //#define POLE_PAIRS 20 // for hip roll motors
+
+uint16_t as5047p_data = 0;
+
 const float elec_rad_per_enc = POLE_PAIRS * 2 * M_PI * (1.0f / (float)(ENCODER_CPR));
 #if HW_VERSION_MAJOR == 3
 #if HW_VERSION_MINOR <= 3
@@ -127,6 +130,7 @@ Motor_t motors[] = {
             .use_index = false,
             .index_found = false,
             .manually_calibrated = false,
+            .use_absolute = true,
             .idx_search_speed = 10.0f, // [rad/s electrical]
             .encoder_cpr = ENCODER_CPR, // Default resolution of CUI-AMT102 encoder,
             .encoder_offset = 0,
@@ -163,6 +167,12 @@ Motor_t motors[] = {
             .calib_anticogging = false,
             .calib_pos_threshold = 1.0f,
             .calib_vel_threshold = 1.0f,
+        },
+        .AS5047PEncoder = {
+            .spiHandle = &hspi3,
+            .nCSgpioHandle = GPIO_3_GPIO_Port,
+            .nCSgpioNumber = GPIO_3_Pin,
+            .encoder_angle = 0.0f,
         },
         .drv_fault = DRV8301_FaultType_NoFault,
     },
@@ -233,6 +243,7 @@ Motor_t motors[] = {
             .use_index = false,
             .index_found = false,
             .manually_calibrated = false,
+            .use_absolute = true,
             .idx_search_speed = 10.0f, // [rad/s electrical]
             .encoder_cpr = ENCODER_CPR, // Default resolution of CUI-AMT102 encoder,
             .encoder_offset = 0,
@@ -269,6 +280,12 @@ Motor_t motors[] = {
             .calib_anticogging = false,
             .calib_pos_threshold = 1.0f,
             .calib_vel_threshold = 1.0f,
+        },
+        .AS5047PEncoder = {
+            .spiHandle = &hspi3,
+            .nCSgpioHandle = GPIO_4_GPIO_Port,
+            .nCSgpioNumber = GPIO_4_Pin,
+            .encoder_angle = 0.0f,
         },
         .drv_fault = DRV8301_FaultType_NoFault,
     }
@@ -961,6 +978,45 @@ bool scan_for_enc_idx(Motor_t* motor, float omega, float voltage_magnitude) {
     }
 }
 
+bool update_init_cnt_value(Motor_t* argument){
+
+    // Motor_t* motor = (Motor_t*)argument;
+
+    Motor_t* motor = (Motor_t*)&motors[0];
+
+    if (motor->encoder.use_absolute){
+        // AEAT_6012_A06_Obj* absEncoder = &motor->absEncoder;
+        // CUI_Obj* cuiEncoder = &motor->CUIEncoder;
+        AS5047P_Obj* AS5047PEncoder = &motor->AS5047PEncoder;
+
+        as5047p_data = AS5047P_readPosition(AS5047PEncoder);
+        osDelay(100);
+        as5047p_data = as5047p_data & 0x3FFF;
+        AS5047PEncoder->encoder_angle = (as5047p_data/16383.0)*360;
+        AS5047PEncoder->encoder_cnt = (as5047p_data) * 4000/16383;
+
+        setEncoderCount(motor, (uint32_t)AS5047PEncoder->encoder_cnt);
+
+        set_pos_setpoint(motor, AS5047PEncoder->encoder_cnt, 0.0f, 0.0f);
+    }
+
+    return true;
+}
+
+void test_encoder(){
+    Motor_t* motor = (Motor_t*)&motors[0];
+    AS5047P_Obj* AS5047PEncoder = &motor->AS5047PEncoder;
+    as5047p_data = AS5047P_readPosition(AS5047PEncoder);
+    osDelay(100);
+    as5047p_data = as5047p_data & 0x3FFF;
+    AS5047PEncoder->encoder_angle = (as5047p_data/16383.0)*360;
+    AS5047PEncoder->encoder_cnt = (as5047p_data) * 4000/16383;
+
+    setEncoderCount(motor, (uint32_t)AS5047PEncoder->encoder_cnt);
+
+    set_pos_setpoint(motor, AS5047PEncoder->encoder_cnt, 0.0f, 0.0f);
+}
+
 //--------------------------------
 // Main motor control
 //--------------------------------
@@ -1471,4 +1527,32 @@ void control_motor_loop(Motor_t* motor) {
     //We are exiting control, reset Ibus, and update brake current
     motor->current_control.Ibus = 0.0f;
     update_brake_current();
+}
+
+//--------------------------------
+// Encoder thread
+//--------------------------------
+
+void AS5047P_thread(void const * argument){
+
+    // HAL_SPI_MspDeInit(&hspi3);
+
+    // osDelay(10);
+
+    // HAL_SPI_DeInit(&hspi3);
+
+    // MX_SPI3_Init_8bit();
+
+    Motor_t* motor = (Motor_t*)argument;
+    // AEAT_6012_A06_Obj* absEncoder = &motor->absEncoder;
+    // CUI_Obj* cuiEncoder = &motor->CUIEncoder;
+    AS5047P_Obj* AS5047PEncoder = &motor->AS5047PEncoder;
+
+    for (;;){
+        // abs_data = AEAT_6012_A06_readAngle(absEncoder);
+        as5047p_data = AS5047P_readPosition(AS5047PEncoder);
+        osDelay(100);
+        as5047p_data = as5047p_data & 0x3FFF;
+        AS5047PEncoder->encoder_angle = (as5047p_data/16383.0)*360;
+    }
 }

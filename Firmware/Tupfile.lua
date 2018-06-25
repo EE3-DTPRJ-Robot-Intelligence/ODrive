@@ -109,6 +109,7 @@ end
 -- TODO: cleaner separation of the platform code and the rest
 stm_includes += 'MotorControl'
 stm_includes += 'Drivers/DRV8301'
+stm_includes += 'Drivers/AS5047P'
 stm_sources += boarddir..'/Src/syscalls.c'
 build{
     name='stm_platform',
@@ -126,6 +127,7 @@ build{
     packages={'stm_platform'},
     sources={
         'Drivers/DRV8301/drv8301.c',
+        'Drivers/AS5047P/as5047p.c',
         'MotorControl/utils.c',
         'MotorControl/legacy_commands.c',
         'MotorControl/low_level.c',
@@ -137,6 +139,7 @@ build{
     },
     includes={
         'Drivers/DRV8301',
+        'Drivers/AS5047P',
         'MotorControl'
     }
 }
